@@ -1,0 +1,1021 @@
+{
+  "updatedAt": "2026-11-04T06:28:15.286Z",
+  "createdAt": "2026-11-03T07:28:35.569Z",
+  "id": "7yb7nBsxIwtSTASQ",
+  "name": "WF1 Lead Intake",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a2db464-a572-4348-8c1a-c20d8d474297",
+              "name": "email",
+              "value": "={{ ($json.body.email ?? '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "21a59bd0-bbb9-4a63-b952-7923d41279c5",
+              "name": "name",
+              "value": "={{ ($json.body.name ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "e8e362a3-4efc-43c5-a610-5fec250ca568",
+              "name": "company",
+              "value": "={{ ($json.body.company ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "70ec8612-93ff-45ed-94e5-7c9e01781187",
+              "name": "message",
+              "value": "={{ ($json.body.message ?? '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "9d3ead01-d956-4690-81e0-a7f646f79703",
+              "name": "source",
+              "value": "={{ $json.body.source ?? 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "58ea74fa-ace6-4594-a85f-c4c2b0cdcda3",
+              "name": "hot_threshold",
+              "value": "70",
+              "type": "number"
+            },
+            {
+              "id": "b80d29de-66e1-420b-b757-420fd6a8ee91",
+              "name": "warm_threshold",
+              "value": "40",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1040,
+        208
+      ],
+      "id": "fbdaee82-861b-4961-bae1-6f5f83927446",
+      "name": "Normalise lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "0d9b7a08-6996-4a99-bde7-e92851f467db",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "42b283e4-50a8-4ef0-a2dd-2e1c43cd8ff6",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1264,
+        208
+      ],
+      "id": "fba25a9e-8478-4402-9aea-eaa72a01647b",
+      "name": "Valid email?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"myField\": \"accepted\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1488,
+        112
+      ],
+      "id": "cc3f62bf-879a-47f6-a405-f205578ae0a3",
+      "name": "Acknowledge lead"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        208
+      ],
+      "id": "219f3a2d-2335-450e-9bd7-06121fe31b1e",
+      "name": "Receive lead",
+      "webhookId": "33a8183d-c135-4b01-900b-ea77b4b5711c",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "REPLACE_ME",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "W2wyTtygoGii6MwT",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/W2wyTtygoGii6MwT",
+          "cachedResultName": "WF2 Enrich Lead"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $('Normalise lead').item.json.email }}",
+            "company": "={{ $('Normalise lead').item.json.company }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1712,
+        112
+      ],
+      "id": "b80164e3-b410-4aa1-a5a7-fc3b5afd1232",
+      "name": "Enrich lead"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Invalid lead payload: missing or malformed email"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        304
+      ],
+      "id": "a2c07364-7caf-4a33-9300-5b14aac73bc9",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \n  \"status\": \"rejected\", \"error\": \"A valid email is required\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1488,
+        304
+      ],
+      "id": "b1f25473-37a3-4fba-9773-dc60215c7c06",
+      "name": "Reject"
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Normalise lead').item.json.message }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "fit_score",
+              "type": "number",
+              "description": "Score from 0 to 100 for how well this request matches the services offered. Higher means a clearer, more urgent, better-funded request",
+              "required": true
+            },
+            {
+              "name": "urgency",
+              "description": "One of: low, medium, high. Use only what the message states"
+            },
+            {
+              "name": "budget_text",
+              "description": "The budget exactly as stated in the message, or empty if none is given"
+            },
+            {
+              "name": "summary",
+              "description": "One sentence describing what the lead wants",
+              "required": true
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "You qualify inbound business leads. Extract only what is stated in the message. Do not invent budgets or deadlines. Score fit from 0 to 100 against these services: mobile apps, backend development, AI chatbots and workflow automation. A clear need, a stated budget and a short deadline raise the score. Vague or off-topic messages score low."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1936,
+        112
+      ],
+      "id": "e404004d-4ecc-4e80-a834-0ff9c68e5f02",
+      "name": "Score lead",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        320
+      ],
+      "id": "02f2b34f-8138-4cf4-82c0-3c7558691bfd",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "REPLACE_ME",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "bbc13e87-d91e-4c11-a63b-ca070515b3f7",
+              "leftValue": "={{ $json.output.fit_score }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "7d90b93f-1211-4699-aba7-529220e5192a",
+              "leftValue": "={{ $json.output.fit_score }}",
+              "rightValue": 100,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        2304,
+        112
+      ],
+      "id": "c343f017-8f36-42b6-b886-918fde9c1cf3",
+      "name": "Score sane?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "640a6d7c-38fe-4d6e-870c-7f87a2d611cf",
+              "name": "email",
+              "value": "={{ $('Normalise lead').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "ae94a476-4990-4207-84e4-33af84a2a139",
+              "name": "name",
+              "value": "={{ $('Normalise lead').item.json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "0848ab39-58e6-454b-9dac-c4b6414def51",
+              "name": "company",
+              "value": "={{ $('Normalise lead').item.json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "58797f77-d0ca-4c89-80fa-55b4512a3598",
+              "name": "message",
+              "value": "={{ $('Normalise lead').item.json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5516dd5c-c3a2-4f55-96ff-351771aebaa3",
+              "name": "source",
+              "value": "={{ $('Normalise lead').item.json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "6dfa8a49-9cf7-45cb-b9d1-b16c7814cc6b",
+              "name": "industry",
+              "value": "={{ $('Enrich lead').item.json.industry }}",
+              "type": "string"
+            },
+            {
+              "id": "5bc26206-114e-4782-afc0-bdad956600a6",
+              "name": "company_size",
+              "value": "={{ $('Enrich lead').item.json.company_size }}",
+              "type": "string"
+            },
+            {
+              "id": "ee0be2f9-8780-4106-ba45-24d76df5ecb7",
+              "name": "enriched",
+              "value": "={{ $('Enrich lead').item.json.enriched }}",
+              "type": "boolean"
+            },
+            {
+              "id": "d0c350a0-6f4e-43cc-bcac-fbc19fff8445",
+              "name": "fit_score",
+              "value": "={{ typeof $json.output?.fit_score === 'number' ? $json.output.fit_score : null }}",
+              "type": "number"
+            },
+            {
+              "id": "a89900c4-7201-4a21-809b-74c03012d208",
+              "name": "urgency",
+              "value": "={{ $json.output?.urgency ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2e0b8953-cfe8-4630-95fe-512e578a8318",
+              "name": "budget_text",
+              "value": "={{ $json.output?.budget_text ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "00b41e21-0dbf-44e0-9267-f3a52f00f30f",
+              "name": "summary",
+              "value": "={{ $json.output?.summary ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "be871ebe-de77-4246-b52c-9e90265ced83",
+              "name": "tier",
+              "value": "={{ typeof $json.output?.fit_score !== 'number' || $json.output.fit_score < 0 || $json.output.fit_score > 100 ? 'needs_review' : ($json.output.fit_score >= $('Normalise lead').item.json.hot_threshold ? 'hot' : ($json.output.fit_score >= $('Normalise lead').item.json.warm_threshold ? 'warm' : 'cold')) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2528,
+        16
+      ],
+      "id": "3d3c5ad6-8433-429e-9ebc-99e6dec7ad39",
+      "name": "Build record"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "leads",
+          "mode": "list",
+          "cachedResultName": "leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "enriched": false
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "industry",
+              "displayName": "industry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "company_size",
+              "displayName": "company_size",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "enriched",
+              "displayName": "enriched",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "fit_score",
+              "displayName": "fit_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "budget_text",
+              "displayName": "budget_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2768,
+        16
+      ],
+      "id": "77d6b8d2-3695-4fdc-ab43-501b1e0c62cb",
+      "name": "Save lead",
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_ME",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4b401f09-fe6a-414a-95b4-f777b17f9b68"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "d6219ed6-164b-44be-9937-d003d94520e8",
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "de013602-baa7-4d32-a362-4edea07ee62c",
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "cold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "cd435f9b-bce8-493b-bea9-6ade858e3a71",
+                    "leftValue": "={{ $json.tier }}",
+                    "rightValue": "needs_review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "needs_review"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        2992,
+        16
+      ],
+      "id": "61e4cff5-f228-4bb8-b4fd-5f336f2a392e",
+      "name": "Route by tier"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        240
+      ],
+      "id": "389c20ef-1322-494a-a2c9-cec43fe7d2c4",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=HOT LEAD ({{ $json.fit_score }}/100) {{ $json.name }} - {{ $json.company }} {{ $json.email }} Urgency: {{ $json.urgency }} {{ $json.summary }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        3216,
+        -208
+      ],
+      "id": "6ee72e38-f696-4d6b-a51a-e9340a505b12",
+      "name": "Alert hot lead",
+      "webhookId": "5e94158c-e7bb-43b5-bf32-5fa1516cede1",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_ME",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "YOUR_SLACK_CHANNEL_ID",
+          "mode": "id"
+        },
+        "text": "=Warm lead ({{ $json.fit_score }}/100): {{ $json.name }}, {{ $json.company }}, {{ $json.email }} {{ $json.summary }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        3216,
+        -96
+      ],
+      "id": "c8ecb613-cb6e-427c-9bee-b3b0d505ab63",
+      "name": "Send a message",
+      "webhookId": "1f9dc10d-b2c7-4bad-9ba9-a08d26281cba",
+      "credentials": {
+        "slackApi": {
+          "id": "REPLACE_ME",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        64
+      ],
+      "id": "b04c4640-1b57-4c10-b0fb-f932f3be860a",
+      "name": "Cold lead"
+    }
+  ],
+  "connections": {
+    "Normalise lead": {
+      "main": [
+        [
+          {
+            "node": "Valid email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid email?": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive lead": {
+      "main": [
+        [
+          {
+            "node": "Normalise lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge lead": {
+      "main": [
+        [
+          {
+            "node": "Enrich lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich lead": {
+      "main": [
+        [
+          {
+            "node": "Score lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Score lead",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score lead": {
+      "main": [
+        [
+          {
+            "node": "Score sane?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score sane?": {
+      "main": [
+        [
+          {
+            "node": "Build record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build record": {
+      "main": [
+        [
+          {
+            "node": "Save lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save lead": {
+      "main": [
+        [
+          {
+            "node": "Route by tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by tier": {
+      "main": [
+        [
+          {
+            "node": "Alert hot lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cold lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "LPqU2IdkIteiHAJ2",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "d5e68b8c-ab79-4bfe-b835-26c53c14f796",
+  "activeVersionId": "d5e68b8c-ab79-4bfe-b835-26c53c14f796",
+  "versionCounter": 10,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": []
+}

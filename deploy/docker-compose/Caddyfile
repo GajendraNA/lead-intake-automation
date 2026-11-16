@@ -1,0 +1,6 @@
+# Caddy gets and renews the HTTPS certificate automatically.
+# Requirements: DNS for N8N_HOST points at this server, and ports 80 and 443 are open.
+{$N8N_HOST} {
+	encode gzip
+	reverse_proxy n8n:5678
+}

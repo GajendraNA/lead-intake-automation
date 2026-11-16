@@ -1,0 +1,102 @@
+# n8n self-hosted starter kit
+#
+# Simple mode (n8n + Postgres):   docker compose up -d
+# Queue mode (adds Redis + workers): in .env set EXECUTIONS_MODE=queue and COMPOSE_PROFILES=queue
+# HTTPS reverse proxy (Caddy):    add "proxy" to COMPOSE_PROFILES, e.g. COMPOSE_PROFILES=queue,proxy
+#
+# All n8n processes (main and workers) must share the same database and N8N_ENCRYPTION_KEY.
+
+name: n8n-kit
+
+x-n8n-env: &n8n-env
+  DB_TYPE: postgresdb
+  DB_POSTGRESDB_HOST: postgres
+  DB_POSTGRESDB_PORT: "5432"
+  DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+  DB_POSTGRESDB_USER: ${POSTGRES_USER}
+  DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+  N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+  N8N_HOST: ${N8N_HOST}
+  N8N_PORT: "5678"
+  N8N_PROTOCOL: ${N8N_PROTOCOL}
+  WEBHOOK_URL: ${WEBHOOK_URL}
+  N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE}
+  GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+  TZ: ${GENERIC_TIMEZONE}
+  EXECUTIONS_MODE: ${EXECUTIONS_MODE:-regular}
+  QUEUE_BULL_REDIS_HOST: redis
+  QUEUE_BULL_REDIS_PORT: "6379"
+  # Keep execution history small (hours). Raise it if you need longer history.
+  EXECUTIONS_DATA_PRUNE: "true"
+  EXECUTIONS_DATA_MAX_AGE: "336"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["queue"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:${N8N_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Bound to localhost only. Reach it from outside through the Caddy proxy profile.
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment: *n8n-env
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  n8n-worker:
+    image: docker.n8n.io/n8nio/n8n:${N8N_IMAGE_TAG:-latest}
+    profiles: ["queue"]
+    restart: unless-stopped
+    command: worker
+    environment: *n8n-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["proxy"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      N8N_HOST: ${N8N_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - n8n
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:
