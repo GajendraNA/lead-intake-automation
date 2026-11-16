@@ -310,6 +310,7 @@ reports failures.</pre>
     var t = $("tier"); t.className = "tier " + tier;
     t.textContent = (tier === "hot" ? "▲ " : tier === "warm" ? "● " : tier === "cold" ? "▽ " : "? ") + TIER_LABEL[tier];
     var scored = typeof d.fit_score === "number";
+    if (!scored) setStep("score", "fail");
     $("score").textContent = scored ? String(d.fit_score) : "n/a";
     $("bar").style.width = scored ? Math.max(0, Math.min(100, d.fit_score)) + "%" : "0%";
     $("summary").textContent = d.summary || (scored ? "" : "The AI scorer is unavailable right now, so this lead is held for manual review.");
