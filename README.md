@@ -21,8 +21,7 @@ POST /webhook/lead-intake  (Basic Auth)
         ▼
    Score lead with Groq (fit score 0-100, urgency, budget, summary)
         ▼
-   Score sane? ──no──► stop and raise an error
-        │ yes
+   Build record (tier = needs_review if the score is missing or outside 0-100)
         ▼
    Save lead to Postgres (upsert by email)
         ▼
@@ -38,8 +37,17 @@ POST /webhook/lead-intake  (Basic Auth)
 | WF1 Lead Intake | [workflows/WF1-lead-intake.json](workflows/WF1-lead-intake.json) | Webhook, validation, scoring, save, routing |
 | WF2 Enrich Lead | [workflows/WF2-enrich-lead.json](workflows/WF2-enrich-lead.json) | Enrichment step called by WF1. It currently calls the public placeholder API `jsonplaceholder.typicode.com`, which returns demo data. Swap in a real company-data API to get real enrichment. |
 | WF3 Error Handler | [workflows/WF3-error-handler.json](workflows/WF3-error-handler.json) | Notifies Slack and logs failures |
+| WF4 Demo Lead | [workflows/WF4-demo-lead.json](workflows/WF4-demo-lead.json) | Optional. A public, rate-limited endpoint behind the live demo page. It does not save leads or post to Slack. |
 
-Database tables are in [sql/schema.sql](sql/schema.sql): `leads` and `error_log`.
+Database tables are in [sql/schema.sql](sql/schema.sql): `leads` and `error_log`. The optional demo adds `demo_runs` ([sql/demo.sql](sql/demo.sql)), which stores only hashed IPs for rate limiting.
+
+## Live demo
+
+**https://gajendrana.github.io/lead-intake-automation/**
+
+The page in [docs/index.html](docs/index.html) sends a sample lead to WF4, which runs the same enrichment and AI scoring as WF1 and returns the result. It is limited to 3 runs per visitor per hour and 50 per day, stores no lead data, and never posts to Slack. The demo runs on a free server that sleeps when idle, so the first run can take up to a minute.
+
+To run your own copy of the demo, import WF4, create the `demo_runs` table, and change `ENDPOINT` and the allowed origin (the webhook's **Allowed Origins** option) to your own URLs.
 
 ## What you need
 

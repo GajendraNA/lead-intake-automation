@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Intake Automation, live demo</title>
+<meta name="description" content="Submit a sample lead and watch an n8n workflow validate, enrich, AI-score and route it. Built with n8n, Postgres, Groq and Slack.">
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --text: #15181d; --muted: #5a6472;
+    --line: #dfe3e8; --accent: #e8590c; --accent-text: #ffffff; --focus: #1c64f2;
+    --hot: #c92a2a; --hot-bg: #fff0f0; --warm: #a85a00; --warm-bg: #fff6e5;
+    --cold: #1d5fa8; --cold-bg: #eaf3ff; --review: #4b5563; --review-bg: #eef0f3;
+    --ok: #2b8a3e; --err: #c92a2a;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 16px rgba(16,24,40,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --surface: #171b21; --surface-2: #1f242c; --text: #eceff3; --muted: #9aa5b3;
+      --line: #2b323c; --accent: #ff8a3d; --accent-text: #1a1206; --focus: #6ea2ff;
+      --hot: #ff8b8b; --hot-bg: #2c1618; --warm: #ffc266; --warm-bg: #2b2112;
+      --cold: #8ec3ff; --cold-bg: #14233a; --review: #c3cad4; --review-bg: #222831;
+      --ok: #69db7c; --err: #ff8b8b; --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
+  header.top { padding: 40px 0 8px; }
+  .eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  h1 { font-size: clamp(26px, 4.5vw, 38px); line-height: 1.15; margin: 0 0 12px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; font-size: 14px; }
+  .links a { color: var(--text); text-underline-offset: 3px; }
+
+  main.grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; margin: 24px 0 32px; align-items: start; }
+  @media (max-width: 860px) { main.grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 17px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .chip { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); cursor: pointer; }
+  .chip:hover { border-color: var(--muted); }
+  label { display: block; font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .field { margin: 0 0 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .two { grid-template-columns: 1fr; } }
+  input, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
+  .count { float: right; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  button.primary {
+    width: 100%; font: inherit; font-weight: 700; padding: 12px 16px; border: 0; border-radius: 10px;
+    background: var(--accent); color: var(--accent-text); cursor: pointer;
+  }
+  button.primary[disabled] { opacity: .6; cursor: progress; }
+  .privacy { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+  /* pipeline */
+  ol.steps { list-style: none; margin: 0; padding: 0; }
+  ol.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 7px 0; color: var(--muted); font-size: 14.5px; }
+  ol.steps .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 12px; line-height: 1; background: var(--surface); }
+  ol.steps li small { display: block; font-size: 12.5px; color: var(--muted); }
+  ol.steps li.active { color: var(--text); }
+  ol.steps li.active .dot { border-color: var(--accent); border-top-color: transparent; animation: spin .8s linear infinite; }
+  ol.steps li.done { color: var(--text); }
+  ol.steps li.done .dot { border-color: var(--ok); background: var(--ok); color: var(--surface); }
+  ol.steps li.fail .dot { border-color: var(--err); background: var(--err); color: var(--surface); }
+  ol.steps li.skipped { opacity: .55; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { ol.steps li.active .dot { animation: none; border-top-color: var(--accent); } }
+
+  .status { margin: 14px 0 0; font-size: 14px; color: var(--muted); min-height: 1.4em; }
+  .status.error { color: var(--err); }
+
+  .result { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
+  .tier { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: 13px; padding: 6px 12px; border-radius: 999px; }
+  .tier.hot { color: var(--hot); background: var(--hot-bg); }
+  .tier.warm { color: var(--warm); background: var(--warm-bg); }
+  .tier.cold { color: var(--cold); background: var(--cold-bg); }
+  .tier.needs_review { color: var(--review); background: var(--review-bg); }
+  .scoreline { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 6px; }
+  .score { font-size: 38px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+  .of { color: var(--muted); font-size: 14px; }
+  .bar { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
+  .bar > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+  dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 16px 0 0; font-size: 14.5px; }
+  dl.facts dt { color: var(--muted); }
+  dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+  .slack { margin-top: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); padding: 12px 14px; font-size: 14px; }
+  .slack .who { font-weight: 700; font-size: 13px; margin: 0 0 4px; }
+  .slack .msg { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .slack .note { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+  [hidden] { display: none !important; }
+
+  details.how { margin: 0 0 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; box-shadow: var(--shadow); }
+  details.how summary { cursor: pointer; font-weight: 700; padding: 14px 0; }
+  details.how pre { margin: 0 0 12px; padding: 14px; background: var(--surface-2); border-radius: 10px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+  details.how p { color: var(--muted); margin: 0 0 14px; }
+  footer { border-top: 1px solid var(--line); padding: 20px 0 40px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">n8n · Postgres · Groq · Slack</p>
+    <h1>Lead intake automation, live demo</h1>
+    <p class="lede">Send in a sample lead and watch a real n8n workflow validate it, enrich it, score it with an AI model, and decide where it should go.</p>
+    <p class="links">
+      <a href="https://github.com/GajendraNA/lead-intake-automation">Source and setup guide</a>
+      <a href="https://github.com/GajendraNA/lead-intake-automation/releases/latest">Download the release</a>
+    </p>
+  </header>
+
+  <main class="grid">
+    <section class="card" aria-labelledby="form-h">
+      <h2 id="form-h">1. Submit a lead</h2>
+      <p class="sub">Pick a sample or write your own. Use made-up details.</p>
+      <div class="samples" role="group" aria-label="Sample leads">
+        <button type="button" class="chip" data-sample="hot">Urgent, funded request</button>
+        <button type="button" class="chip" data-sample="warm">Interested, no budget</button>
+        <button type="button" class="chip" data-sample="cold">Off-topic</button>
+      </div>
+      <form id="lead-form" novalidate>
+        <div class="two">
+          <div class="field"><label for="name">Name</label><input id="name" name="name" autocomplete="off" maxlength="80" placeholder="Priya Nair"></div>
+          <div class="field"><label for="company">Company</label><input id="company" name="company" autocomplete="off" maxlength="80" placeholder="Acme Retail"></div>
+        </div>
+        <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="off" maxlength="120" placeholder="priya@example.com" required></div>
+        <div class="field">
+          <label for="message">Message <span class="count" id="count" aria-hidden="true">0 / 600</span></label>
+          <textarea id="message" name="message" maxlength="600" required placeholder="What do they need, and when? Mention a budget or deadline to see the score change."></textarea>
+          <p class="hint">At least 15 characters.</p>
+        </div>
+        <button class="primary" id="go" type="submit">Run the automation</button>
+      </form>
+      <p class="privacy">Nothing you enter is saved or posted to Slack. The text is sent to an AI model (Groq) for scoring. A one-way hash of your IP address is kept for two days to limit each visitor to 3 runs per hour, with 50 runs per day for the whole demo.</p>
+    </section>
+
+    <section class="card" aria-labelledby="run-h">
+      <h2 id="run-h">2. What happens</h2>
+      <p class="sub">The same steps run in the real workflow.</p>
+      <ol class="steps" id="steps">
+        <li data-step="receive"><span class="dot" aria-hidden="true"></span><span>Receive the lead<small>Webhook accepts the request</small></span></li>
+        <li data-step="validate"><span class="dot" aria-hidden="true"></span><span>Validate and clean the input<small>Valid email, enough detail</small></span></li>
+        <li data-step="limit"><span class="dot" aria-hidden="true"></span><span>Check the demo limits<small>Protects the free AI quota</small></span></li>
+        <li data-step="enrich"><span class="dot" aria-hidden="true"></span><span>Enrich the company<small>Sub-workflow lookup (placeholder data in this demo)</small></span></li>
+        <li data-step="score"><span class="dot" aria-hidden="true"></span><span>Score the lead with AI<small>Fit score, urgency, budget, one-line summary</small></span></li>
+        <li data-step="route"><span class="dot" aria-hidden="true"></span><span>Route by tier<small>Hot and warm leads alert the team</small></span></li>
+      </ol>
+      <p class="status" id="status" role="status" aria-live="polite">Waiting for a lead.</p>
+
+      <div class="result" id="result" hidden>
+        <span class="tier" id="tier"></span>
+        <div class="scoreline"><span class="score" id="score">0</span><span class="of">/ 100 fit score</span></div>
+        <div class="bar" aria-hidden="true"><span id="bar"></span></div>
+        <dl class="facts">
+          <dt>Summary</dt><dd id="summary"></dd>
+          <dt>Urgency</dt><dd id="urgency"></dd>
+          <dt>Budget</dt><dd id="budget"></dd>
+          <dt>Routed to</dt><dd id="routed"></dd>
+          <dt>Your runs left</dt><dd id="left"></dd>
+        </dl>
+        <div class="slack" id="slack" hidden>
+          <p class="who">Slack message preview</p>
+          <p class="msg" id="slack-msg"></p>
+          <p class="note">Preview only. The demo does not post to Slack.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <details class="how">
+    <summary>How the workflow is built</summary>
+    <pre>POST /webhook/demo-lead
+  ├─ normalise fields, trim and cap lengths
+  ├─ valid email and message?  ── no ──▶ 400
+  ├─ per-visitor and daily limits? ─ over ─▶ 429
+  ├─ enrich company (sub-workflow)
+  ├─ score with Groq (fit 0-100, urgency, budget, summary)
+  └─ tier: hot ≥ 70 · warm ≥ 40 · cold · needs review (no score)
+
+The production workflow (WF1) also saves the lead to Postgres and
+posts hot and warm leads to Slack. A separate error workflow (WF3)
+reports failures.</pre>
+    <p>The free server sleeps when idle, so the first run after a quiet period can take up to a minute. The page wakes it as soon as you open it.</p>
+  </details>
+
+  <footer>Built with n8n, Postgres and Groq. MIT licensed. <a href="https://github.com/GajendraNA/lead-intake-automation">View the code</a>.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var BASE = "https://leads-intake-n8n.onrender.com";
+  var ENDPOINT = BASE + "/webhook/demo-lead";
+  var SAMPLES = {
+    hot:  { name: "Priya Nair", company: "Acme Retail", email: "priya@acme-retail.example",
+            message: "We need a mobile app and an AI chatbot for our retail stores. Budget approved at around 8 lakh INR and we want to start within two weeks." },
+    warm: { name: "Rahul Verma", company: "Verma Logistics", email: "rahul@verma-logistics.example",
+            message: "We are thinking about automating our invoice follow-ups. There is no fixed budget yet, maybe something next quarter." },
+    cold: { name: "Sam Lee", company: "Lee Bakery", email: "sam@lee-bakery.example",
+            message: "Do you sell cheap used laptops? Looking for a good deal on a few of them." }
+  };
+  var ORDER = ["receive", "validate", "limit", "enrich", "score", "route"];
+  var TIER_LABEL = { hot: "Hot lead", warm: "Warm lead", cold: "Cold lead", needs_review: "Needs review" };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $("lead-form"), go = $("go"), statusEl = $("status"), resultEl = $("result");
+  var stepEls = {};
+  document.querySelectorAll("#steps li").forEach(function (li) { stepEls[li.getAttribute("data-step")] = li; });
+
+  // Wake the free server as soon as the page opens (cheap health check, no AI call).
+  try { fetch(BASE + "/healthz", { mode: "no-cors", cache: "no-store" }).catch(function () {}); } catch (e) {}
+
+  document.querySelectorAll("[data-sample]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var s = SAMPLES[b.getAttribute("data-sample")];
+      $("name").value = s.name; $("company").value = s.company; $("email").value = s.email; $("message").value = s.message;
+      updateCount();
+    });
+  });
+  function updateCount() { $("count").textContent = $("message").value.length + " / 600"; }
+  $("message").addEventListener("input", updateCount);
+
+  function setStep(key, state) {
+    var li = stepEls[key]; if (!li) return;
+    li.classList.remove("active", "done", "fail", "skipped");
+    var dot = li.querySelector(".dot");
+    if (state) li.classList.add(state);
+    dot.textContent = state === "done" ? "✓" : state === "fail" ? "!" : "";
+  }
+  function resetSteps() { ORDER.forEach(function (k) { setStep(k, ""); }); }
+  function setStatus(text, isError) { statusEl.textContent = text; statusEl.classList.toggle("error", !!isError); }
+
+  var timers = [];
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function animate() {
+    // Optimistic progress while the real request is in flight. Real outcome overrides it.
+    var i = 0;
+    (function next() {
+      if (i > 0) setStep(ORDER[i - 1], "done");
+      if (i < ORDER.length - 1) { setStep(ORDER[i], "active"); i++; timers.push(setTimeout(next, i === 5 ? 3500 : 900)); }
+    })();
+  }
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var payload = {
+      name: $("name").value.trim(), company: $("company").value.trim(),
+      email: $("email").value.trim(), message: $("message").value.trim()
+    };
+    resultEl.hidden = true; resetSteps(); clearTimers();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) { setStatus("Enter a valid email address.", true); $("email").focus(); return; }
+    if (payload.message.length < 15) { setStatus("Write a message of at least 15 characters.", true); $("message").focus(); return; }
+
+    go.disabled = true; go.textContent = "Running…";
+    setStatus("Sending to the workflow…");
+    animate();
+    var slow = setTimeout(function () { setStatus("Waking the free server. The first run after a quiet spell can take up to a minute…"); }, 5000);
+    var ctrl = new AbortController();
+    var abort = setTimeout(function () { ctrl.abort(); }, 120000);
+
+    fetch(ENDPOINT, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload), signal: ctrl.signal
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) { return { code: res.status, data: data }; });
+    }).then(function (r) {
+      clearTimers();
+      if (r.code === 200 && r.data.status === "scored") { showResult(r.data); return; }
+      if (r.code === 400) { failAt("validate", r.data.error || "The input was not valid.", ["validate"]); return; }
+      if (r.code === 429) { failAt("limit", r.data.message || "Demo limit reached. Try again later.", ["validate", "limit"], true); return; }
+      failAt("score", "The workflow hit an error. Please try again in a moment.", []);
+    }).catch(function (e) {
+      clearTimers();
+      failAt("receive", e && e.name === "AbortError"
+        ? "The server took too long to answer. Try again in a minute."
+        : "Could not reach the demo server. It may be starting up. Try again in a minute.", []);
+    }).then(function () {
+      clearTimeout(slow); clearTimeout(abort);
+      go.disabled = false; go.textContent = "Run the automation";
+    });
+  });
+
+  function failAt(step, message, doneSteps, limitCase) {
+    resetSteps();
+    ORDER.forEach(function (k) { if (k === "receive") setStep(k, "done"); });
+    doneSteps.forEach(function (k) { if (k !== step) setStep(k, "done"); });
+    setStep(step, "fail");
+    var after = ORDER.indexOf(step);
+    ORDER.forEach(function (k, i) { if (i > after) stepEls[k].classList.add("skipped"); });
+    setStatus(message, true);
+  }
+
+  function showResult(d) {
+    ORDER.forEach(function (k) { setStep(k, "done"); });
+    var tier = TIER_LABEL[d.tier] ? d.tier : "needs_review";
+    var t = $("tier"); t.className = "tier " + tier;
+    t.textContent = (tier === "hot" ? "▲ " : tier === "warm" ? "● " : tier === "cold" ? "▽ " : "? ") + TIER_LABEL[tier];
+    var scored = typeof d.fit_score === "number";
+    $("score").textContent = scored ? String(d.fit_score) : "n/a";
+    $("bar").style.width = scored ? Math.max(0, Math.min(100, d.fit_score)) + "%" : "0%";
+    $("summary").textContent = d.summary || (scored ? "" : "The AI scorer is unavailable right now, so this lead is held for manual review.");
+    $("urgency").textContent = d.urgency || "Not stated";
+    $("budget").textContent = d.budget_text || "Not stated";
+    $("routed").textContent = d.routed_to || "";
+    var left = typeof d.runs_left_this_hour === "number" ? d.runs_left_this_hour : null;
+    $("left").textContent = left === null ? "" : left + " this hour";
+    var sm = $("slack"); if (d.slack_preview) { $("slack-msg").textContent = d.slack_preview; sm.hidden = false; } else { sm.hidden = true; }
+    resultEl.hidden = false;
+    setStatus(scored ? "Done. This is what the production workflow would do with this lead." : "Finished, but the AI scoring step did not return a score.");
+    resultEl.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+  }
+})();
+</script>
+</body>
+</html>
